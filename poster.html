@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用GBDT模型做股票價格預測</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+
+    MathJax = {
+        tex: {
+            displayMath: [['\\[', '\\]'], ['\\(', '\\)']],
+        },
+        options: {
+            renderActions: {
+                addLineBreaks: [0, () => {
+                    document.querySelectorAll('mjx-container[jax="CHTML"]').forEach(node => {
+                        node.style.textAlign = "left";
+                    });
+                }, '']
+            }
+        }
+    };
+
+        
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        header {
+            background-color: rgba(255, 140, 0, 0.8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        section {
+            padding: 20px;
+            margin: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #FFCC00;
+        }
+        .card {
+            border: 1px solid #fff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .details {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        .formula, .image-placeholder {
+            margin: 10px 0;
+            text-align: center;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(255, 140, 0, 0.8);
+            color: white;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+    <script>
+        function toggleDetails(id) {
+            const details = document.getElementById(id);
+            if (details.style.display === 'none' || details.style.display === '') {
+                details.style.display = 'block';
+            } else {
+                details.style.display = 'none';
+            }
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>用GBDT模型做股票價格預測</h1>
+    </header>
+
+    <section>
+        <h2 class="section-title">市場上的股票分析工具</h2>
+        <div class="card" onclick="toggleDetails('toolDetails')">
+            <h3>StockHero 與 TrendSpider</h3>
+        </div>
+        <div id="toolDetails" class="details">
+            <h4>StockHero的AI模型與訓練技術</h4>
+            <div class="card" onclick="toggleDetails('reinforcementLearning')">
+                <h5>強化學習</h5>
+            </div>
+            <div id="reinforcementLearning" class="details">
+                <p>StockHero 的交易機器人可能採用強化學習技術，透過模擬市場環境，訓練代理人（Agent）學習如何在不同條件下執行買入、賣出或持有操作。</p>
+                <p>訓練步驟包括：</p>
+                <ul>
+                    <li>模擬市場數據：利用歷史股票價格和交易數據創建逼真的市場環境。</li>
+                    <li>獎勵函數設計：模型會根據交易的收益率來調整行為，例如賺取高收益時給予獎勵，損失時給予懲罰。</li>
+                    <li>策略優化：透過策略梯度方法（如PPO）或價值函數估計方法（如Q-learning）來優化決策。</li>
+                </ul>
+            </div>
+            <div class="card" onclick="toggleDetails('backtesting')">
+                <h5>回測與數據增強</h5>
+            </div>
+            <div id="backtesting" class="details">
+                <p>回測功能：</p>
+                <ul>
+                    <li>機器人會利用數年的歷史數據進行策略測試，驗證模型在不同市場條件下的表現。</li>
+                </ul>
+                <p>數據增強（Data Augmentation）：</p>
+                <ul>
+                    <li>模擬多種市場條件（如牛市、熊市或盤整市場），提高模型的泛化能力，確保它在各種情況下都能表現良好。</li>
+                </ul>
+            </div>
+            <div class="card" onclick="toggleDetails('deepLearning')">
+                <h5>深度學習</h5>
+            </div>
+            <div id="deepLearning" class="details">
+                <p>StockHero 可能採用 LSTM（長短期記憶）模型，來處理股票價格的時間序列數據。</p>
+                <p>訓練技術：</p>
+                <ul>
+                    <li>使用多變量時間序列數據（包括價格、交易量、技術指標）作為輸入。</li>
+                    <li>訓練模型預測下一步價格走勢，並根據此預測指導交易策略。</li>
+                </ul>
+            </div>
+            
+
+            <h4>TrendSpider的AI模型與訓練技術</h4>
+            <div class="card" onclick="toggleDetails('machineLearning')">
+                <h5>機器學習（Machine Learning）應用於自動技術分析</h5>
+            </div>
+            <div id="machineLearning" class="details">
+                <p>趨勢線與支撐阻力位檢測：</p>
+                <ul>
+                    <li>TrendSpider 的核心功能是自動繪製趨勢線和檢測支撐阻力位。</li>
+                </ul>
+                <p>模型訓練流程：</p>
+                <ul>
+                    <li>提取歷史價格的高點和低點作為數據特徵。</li>
+                    <li>利用聚類算法（如 K-means）檢測價格的「集中區域」，並識別重要的支撐和阻力區間。</li>
+                    <li>透過回歸方法（如線性回歸）繪製趨勢線。</li>
+                </ul>
+                <p>動態價格警報與模式識別：</p>
+                <ul>
+                    <li>模型會監控特定價格模式（如頭肩頂、雙底、旗形等），利用模板匹配技術和卷積神經網絡（CNN）實現自動識別。</li>
+                </ul>
+            </div>
+            <div class="card" onclick="toggleDetails('multiTimeFrameAnalysis')">
+                <h5>時間序列預測與多時間框架分析</h5>
+            </div>
+            <div id="multiTimeFrameAnalysis" class="details">
+                <p>LSTM/GRU 網絡：</p>
+                <ul>
+                    <li>與 StockHero 類似，TrendSpider 利用深度學習的時間序列模型，對股票價格的多時間框架（如日線、週線、月線）進行分析。</li>
+                </ul>
+                <p>多時間框架的輸入特徵包括：</p>
+                <ul>
+                    <li>短期波動（高頻數據）。</li>
+                    <li>長期趨勢（低頻數據）。</li>
+                </ul>
+                <p>模型輸出：結合不同框架的趨勢，給出綜合的交易建議。</p>
+            </div>
+            <div class="card" onclick="toggleDetails('backtestingOptimization')">
+                <h5>回測與策略優化</h5>
+            </div>
+            <div id="backtestingOptimization" class="details">
+                <p>回測機制：</p>
+                <ul>
+                    <li>TrendSpider 支持用戶利用其 AI 模型對交易策略進行回測，幫助用戶找到歷史上表現最優的策略。</li>
+                </ul>
+                <p>策略優化：</p>
+                <ul>
+                    <li>模型使用歷史回測數據和蒙特卡洛模擬進行參數調整，優化策略表現。</li>
+                </ul>
+            </div>
+            <div class="card" onclick="toggleDetails('nlpIntegration')">
+                <h5>自然語言處理（NLP）</h5>
+            </div>
+            <div id="nlpIntegration" class="details">
+                <p>應用於基本面數據分析：</p>
+                <ul>
+                    <li>利用 NLP 分析上市公司財報、新聞標題及分析師報告的文本數據。</li>
+                    <li>透過情緒分析（Sentiment Analysis）檢測市場情緒，並將其與技術分析結合。</li>
+                </ul>
+            </div>
+            
+        </div>
+
+      <div class="card" onclick="toggleDetails('summaryComparison')">
+    <h5 style="color: white;">總結：StockHero vs. TrendSpider 的 AI 模型技術比較</h5>
+</div>
+<div id="summaryComparison" class="details">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: rgba(0, 0, 0, 0.8); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); color: white;">
+        <thead>
+            <tr style="background-color: rgba(255, 140, 0, 1); color: white;">
+                <th style="padding: 10px; text-align: left;">功能</th>
+                <th style="padding: 10px; text-align: left;">StockHero</th>
+                <th style="padding: 10px; text-align: left;">TrendSpider</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">主要技術</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">強化學習 + LSTM</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">機器學習（聚類、回歸）+ 時間序列分析</td>
+            </tr>
+            <tr style="background-color: rgba(255, 255, 255, 0.1);">
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">應用場景</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">自動交易執行與策略回測</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">自動技術分析、趨勢線繪製、多時間框架研究</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">數據處理</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">時間序列數據 + 模擬市場條件</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">技術指標 + 財報情緒分析</td>
+            </tr>
+            <tr style="background-color: rgba(255, 255, 255, 0.1);">
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">技術特點</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">API 實時交易，無需手動干預</td>
+                <td style="padding: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">自動圖表分析，自定義警報</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="margin-top: 10px; color: white;">StockHero 側重於交易執行與自動化策略部署，而 TrendSpider 則專注於市場研究和技術分析的智能化。</p>
+</div>
+
+
+    </section>
+<section>
+    <div class="card" onclick="toggleDetails('originalModel')">
+        <h3>原本預測模型</h3>
+    </div>
+    <div id="originalModel" class="details">
+
+        <!-- (1) 股價預測公式與 E(d) 與 r 值 -->
+        <div class="card" onclick="toggleDetails('priceFormulaAndEdRvalues')">
+            <h4>(1) 股價預測公式與 E(d) 與 r 值</h4>
+        </div>
+        <div id="priceFormulaAndEdRvalues" class="details">
+            <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">公式如下：</p>
+            <div style="text-align: left; margin-left: 20px; color: white; font-size: 22px; line-height: 1.8;">
+                \[
+                V = \frac{E(d)}{r}
+                \]
+            </div>
+            <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">符號解釋：</p>
+            <div style="text-align: left; margin-left: 40px; color: white; font-size: 20px; line-height: 1.8;">
+                \[
+                V : \text{股價}
+                \]
+                \[
+                E(d) : \text{預期股利}
+                \]
+                \[
+                r : \text{預期股利折扣率}
+                \]
+            </div>
+            <p style="text-align: left; color: white; margin-left: 20px; line-height: 1.8;">
+                是利用公司財報上的資訊 (例如: B/S、P/L 等) 評估預期股利，本模型是用 <strong>LOGIT</strong> 回歸模型先篩選掉與股價漲幅相關係數絕對值小於 0.01 的科目，接著用各科目的相關係數分配權重，最後計算出 <strong>E(d)</strong> 值與 <strong>r</strong> 值。
+            </p>
+        </div>
+
+        <!-- (2) 輸出結果 -->
+        <div class="card" onclick="toggleDetails('outputResults')">
+            <h4>(2) 輸出結果</h4>
+        </div>
+        <div id="outputResults" class="details">
+            <p style="text-align: left; color: white; margin-left: 20px; line-height: 1.8;">
+                本模型輸出的結果是累積報酬率，與歷年的累積報酬率進行比對，公式如下，其中 <strong>m</strong> 是月份，<strong>i</strong> 是選擇的公司編號（i 公司的股票），<strong>Rimt</strong> 是當月的報酬率，<strong>Nm</strong> 是觀察的總月數，此公式並沒有包含複利。
+            </p>
+            <div style="text-align: left; margin-left: 20px; color: white; font-size: 22px; line-height: 1.8;">
+                \[
+                CR_{m} = \sum_{\tau=1}^{m} \sum_{i=1}^{N_{m}} \frac{1}{N_{m}} R_{im\tau}
+                \]
+            </div>
+            <p style="text-align: left; color: white; margin-left: 20px; line-height: 1.8;">
+                公式解釋：
+            </p>
+            <ul style="text-align: left; color: white; margin-left: 40px; line-height: 1.8;">
+                <li><strong>\( CR_m \)</strong> : 第 \( m \) 月的累積報酬率</li>
+                <li><strong>\( N_m \)</strong> : 第 \( m \) 月觀察的公司數量</li>
+                <li><strong>\( R_{im\tau} \)</strong> : 第 \( i \) 家公司的第 \( \tau \) 月的報酬率</li>
+            </ul>
+        </div>
+
+        <!-- (3) 證明此模型的參考價值 -->
+        <div class="card" onclick="toggleDetails('modelValue')">
+            <h4>(3) 證明此模型的參考價值</h4>
+        </div>
+        <div id="modelValue" class="details">
+            <p style="text-align: left; color: white; margin-left: 20px; line-height: 1.8;">
+                此模型的預測與真實報酬率有著高度相關，至少在趨勢上走向十分接近，且正負與現實狀況一樣，一定程度上證明了這模型的參考價值，其中選用的公司是當年有財報所有內容且公司上市多年，觀察都超過5年，用的是平均累積報酬率作為指標。
+            </p>
+            <p style="text-align: left; color: white; margin-left: 20px; line-height: 1.8;">
+                不過，原論文有提到此模型無法保證沒有邊際效應，例如: 之前排除的科目或許有實際的貢獻、長短期的分別非常大，以及無法量化的影響因素，以上都是有可能造成預測與現實狀況有差距的原因。
+            </p>
+            <div class="image-placeholder" style="text-align: center; margin: 20px 0;">
+                <img src="chart.png" alt="原本模型參考價值圖示" style="max-width: 90%; border-radius: 5px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加 MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                displayMath: [['\\[', '\\]'], ['\\(', '\\)']],
+            },
+            options: {
+                renderActions: {
+                    addLineBreaks: [0, () => {
+                        document.querySelectorAll('mjx-container[jax="CHTML"]').forEach(node => {
+                            node.style.textAlign = "left";
+                        });
+                    }, '']
+                }
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</section>
+
+
+
+
+
+<section>
+    <h2 class="section-title">使用GBDT提升準確性</h2>
+    <div class="card" onclick="toggleDetails('gbdtDetails')">
+        <h3>GBDT的優點與應用</h3>
+    </div>
+    <div id="gbdtDetails" class="details" style="display: none;">
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            梯度提升決策樹是屬於機器學習時代的模型，儘管進入深度學習的時代，GBDT也依然被廣泛使用。
+        </p>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            優點：準確度高、靈活性強、可解釋性好。<br>
+            缺點：訓練時間長、容易過擬合。
+        </p>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">(1) GBDT的運作方式：</p>
+        <ul style="text-align: left; font-size: 18px; color: white; margin-left: 40px;">
+            <li>使用CART演算法進行特徵劃分與回歸。</li>
+            <li>通過Boosting方法整合多棵決策樹進行累加預測。</li>
+            <li>利用梯度下降法不斷更新模型參數，優化預測精度。</li>
+        </ul>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            CART演算法：GBDT使用的是CART演算法，模型的基礎依然是決策樹，CART演算法，每次都會對特徵進行二分，
+            特徵劃分是基於吉尼係數，吉尼係數越大代表不確定性越大，方式是每次都會選擇一個特徵並尋找閾值進行二分。
+        </p>
+        <div style="text-align: left; margin-left: 20px; color: white; font-size: 22px; line-height: 1.8;">
+            \[
+            F_M(x) = \sum_{i=1}^{M} T(x, \theta_i)
+            \]
+        </div>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            若是分類問題則會用到另一個公式如下：
+        </p>
+        <div style="text-align: left; margin-left: 20px; color: white; font-size: 22px; line-height: 1.8;">
+            \[
+            \hat{y} = \frac{1}{1 + e^{-\theta x}}
+            \]
+        </div>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            梯度：梯度下降法是一種不斷去更新參數找「解」的方法，梯度的計算公式如下：
+        </p>
+        <div style="text-align: left; margin-left: 20px; color: white; font-size: 22px; line-height: 1.8;">
+            \[
+            x^{(t+1)} = x^{(t)} - \gamma \nabla f(x^{(t)})
+            \]
+        </div>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            訓練模型方法：用GBDT更改原模型計算E(d)與r的參數，讓AI去擬合歷史股價，並對未來做出預測。
+        </p>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            困難：
+        </p>
+        <ul style="text-align: left; font-size: 18px; color: white; margin-left: 40px;">
+            <li>邊際效應可能影響預測的準確性，這是屬於原模型的缺陷，例如排除的科目可能實際有影響，或者無法量化的科目，以及長短期的分別都是造成誤差的可能。</li>
+            <li>GBDT容易過度擬合。</li>
+        </ul>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            解決方法：
+        </p>
+        <ul style="text-align: left; font-size: 18px; color: white; margin-left: 40px;">
+            <li>建立另一個模型把排除的科目加入，比較準確率，並測量邊際效應的影響。</li>
+            <li>設置類似學習率的引述在梯度計算函式中，降低引數的更改幅度，是模型常見的避免過度擬合的方式。</li>
+        </ul>
+    </div>
+    <script>
+        // 顯示與隱藏詳細內容
+        function toggleDetails(id) {
+            const details = document.getElementById(id);
+            if (details.style.display === 'none' || details.style.display === '') {
+                details.style.display = 'block';
+            } else {
+                details.style.display = 'none';
+            }
+        }
+
+        // 確保MathJax渲染
+        MathJax = {
+            tex: {
+                displayMath: [['\\[', '\\]'], ['\\(', '\\)']],
+            },
+            options: {
+                renderActions: {
+                    addLineBreaks: [0, () => {
+                        document.querySelectorAll('mjx-container[jax="CHTML"]').forEach(node => {
+                            node.style.textAlign = "left";
+                        });
+                    }, '']
+                }
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</section>
+
+
+
+
+<section>
+    <h2 class="section-title">預測結果與結論</h2>
+    <div class="card" onclick="toggleDetails('conclusion')">
+        <h3>預測結果與結論</h3>
+    </div>
+    <div id="conclusion" class="details">
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            本模型輸出的結果是積累報酬率，並與歷年實際積累報酬率進行比對。結果顯示趨勢走向高度相關。
+        </p>
+        <p style="text-align: left; font-size: 18px; color: white; margin-left: 20px;">
+            根據測試，本模型對市場趨勢的預測在多數情況下是準確的，特別是在中長期趨勢判斷方面。
+        </p>
+        
+       
+    </div>
+
+</section>
+
+<!-- 添加 MathJax -->
+
+
+    <footer>
+        <p>&copy; 2024 用GBDT模型做股票價格預測</p>
+    </footer>
+</body>
+</html>
